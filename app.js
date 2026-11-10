@@ -1,4 +1,9 @@
 'use strict';
+/* ================= 诊断标记 ================= */
+window.__appBoot = 'start';
+window.addEventListener('error', function(e){
+  window.__appError = (e.message || 'unknown') + ' @' + (e.filename || '') + ':' + (e.lineno || '');
+});
 /* ================= 常量与状态 ================= */
 var STORE_KEY = 'short_link_history_v1';
 var MAX_HISTORY = 50;
@@ -408,3 +413,4 @@ document.addEventListener('keydown', function(e){
 
 /* ================= 初始化 ================= */
 renderHistory();
+window.__appReady = true;
