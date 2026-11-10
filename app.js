@@ -1,9 +1,4 @@
 'use strict';
-/* ================= 诊断标记 ================= */
-window.__appBoot = 'start';
-window.addEventListener('error', function(e){
-  window.__appError = (e.message || 'unknown') + ' @' + (e.filename || '') + ':' + (e.lineno || '');
-});
 /* ================= 常量与状态 ================= */
 var STORE_KEY = 'short_link_history_v1';
 var MAX_HISTORY = 50;
@@ -17,7 +12,7 @@ var VGD_ERRORS = {
   7: '该别名已被占用，换一个试试',
   8: '该别名是保留词，无法使用'
 };
-var history = loadHistory();
+var linkHistory = loadHistory();
 var currentShort = '';
 
 function $(id){ return document.getElementById(id); }
@@ -194,16 +189,16 @@ function loadHistory(){
   }catch(e){ return []; }
 }
 function saveHistory(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(history)); }catch(e){}
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(linkHistory)); }catch(e){}
 }
 function addHistory(item){
-  history.unshift(item);
-  if(history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  linkHistory.unshift(item);
+  if(linkHistory.length > MAX_HISTORY) linkHistory = linkHistory.slice(0, MAX_HISTORY);
   saveHistory();
   renderHistory();
 }
 function removeHistory(id){
-  history = history.filter(function(it){ return it.id !== id; });
+  linkHistory = linkHistory.filter(function(it){ return it.id !== id; });
   saveHistory();
   renderHistory();
 }
@@ -222,10 +217,10 @@ function iconSvg(name){
 function renderHistory(){
   var list = $('historyList');
   list.textContent = '';
-  $('emptyTip').style.display = history.length ? 'none' : 'block';
-  $('clearBtn').hidden = history.length === 0;
+  $('emptyTip').style.display = linkHistory.length ? 'none' : 'block';
+  $('clearBtn').hidden = linkHistory.length === 0;
 
-  history.forEach(function(it){
+  linkHistory.forEach(function(it){
     var li = document.createElement('li');
     li.className = 'glass history-item';
 
@@ -379,8 +374,8 @@ $('qrBtn').addEventListener('click', function(){
 });
 
 $('clearBtn').addEventListener('click', function(){
-  openConfirm('清空历史记录', '将删除本机保存的全部 ' + history.length + ' 条短链记录，此操作不可恢复。', function(){
-    history = [];
+  openConfirm('清空历史记录', '将删除本机保存的全部 ' + linkHistory.length + ' 条短链记录，此操作不可恢复。', function(){
+    linkHistory = [];
     saveHistory();
     renderHistory();
     toast('历史记录已清空');
@@ -413,4 +408,3 @@ document.addEventListener('keydown', function(e){
 
 /* ================= 初始化 ================= */
 renderHistory();
-window.__appReady = true;
