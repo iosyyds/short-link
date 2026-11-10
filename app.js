@@ -2,16 +2,6 @@
 /* ================= 常量与状态 ================= */
 var STORE_KEY = 'short_link_history_v1';
 var MAX_HISTORY = 50;
-var VGD_ERRORS = {
-  1: '请输入需要缩短的网址',
-  2: '网址格式不正确，请检查后重试',
-  3: '该网址被短链服务拒绝',
-  4: '短链服务暂时达到使用上限，请稍后再试',
-  5: '无法访问该网址，请确认链接可以正常打开',
-  6: '自定义别名无效，仅支持 4–30 位字母或数字',
-  7: '该别名已被占用，换一个试试',
-  8: '该别名是保留词，无法使用'
-};
 var linkHistory = loadHistory();
 var currentShort = '';
 
@@ -64,48 +54,35 @@ function fetchText(url, timeoutMs){
 }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
-/* ================= 短链 API ================= */
-function shortenVgd(url, alias){
-  var api = 'https://v.gd/create.php?format=json&url=' + encodeURIComponent(url) + '&logstats=1';
-  if(alias) api += '&shorturl=' + encodeURIComponent(alias);
-  return fetchText(api, 12000).then(function(text){
-    var data;
-    try{ data = JSON.parse(text); }
-    catch(e){ throw new Error('BAD_RESPONSE'); }
-    if(data.shorturl) return {short: data.shorturl, via: 'v.gd'};
-    var code = data.errorcode;
-    var msg = VGD_ERRORS[code] || data.errormessage || '短链服务返回错误';
-    var err = new Error(msg);
-    err.vgdCode = code;
-    throw err;
-  });
+/* ================= 短链 API（da.gd 直接跳转，无中转页） ================= */
+function mapDagdError(s){
+  if(/already taken/i.test(s)) return '该别名已被占用，换一个试试';
+  if(/bad request/i.test(s)) return '请求无效，请检查链接或别名格式';
+  if(/scheme/i.test(s)) return '链接需以 http:// 或 https:// 开头';
+  return s || '短链服务返回错误，请稍后再试';
 }
-function shortenDagd(url){
+function shortenDagd(url, alias){
   var api = 'https://da.gd/shorten?url=' + encodeURIComponent(url);
+  if(alias) api += '&shorturl=' + encodeURIComponent(alias);
   return fetchText(api, 12000).then(function(text){
     var s = text.trim();
     if(/^https?:\/\//.test(s)) return {short: s, via: 'da.gd'};
-    throw new Error(s || '备用服务返回错误');
+    var err = new Error(mapDagdError(s));
+    err.business = true;   // 明确的业务错误，不重试
+    throw err;
   });
 }
 function shorten(url, alias){
   var attempts = 0;
-  function tryVgd(){
+  function attempt(){
     attempts++;
-    return shortenVgd(url, alias).catch(function(err){
-      // v.gd 明确的业务错误（如别名占用/格式错）不重试，直接上抛
-      if(err.vgdCode) throw err;
-      if(attempts < 3) return sleep(700).then(tryVgd);
+    return shortenDagd(url, alias).catch(function(err){
+      if(err.business) throw err;               // 别名占用/格式等不重试
+      if(attempts < 3) return sleep(700).then(attempt);
       throw err;
     });
   }
-  return tryVgd().catch(function(err){
-    if(err.vgdCode) throw err; // 业务错误不降级
-    return shortenDagd(url).then(function(r){
-      if(alias) r.fallbackNote = '别名服务暂不可用，已生成随机短链';
-      return r;
-    });
-  });
+  return attempt();
 }
 
 /* ================= 结果展示 ================= */
@@ -328,8 +305,8 @@ $('shortForm').addEventListener('submit', function(e){
   if(!url){ showError('请输入需要缩短的网址'); return; }
   if(!isValidHttpUrl(url)){ showError('网址格式不正确，请检查后重试'); return; }
   if(alias){
-    if(alias.length < 4 || alias.length > 30){ showError('自定义别名需为 4–30 位字母或数字'); return; }
-    if(!/^[a-zA-Z0-9]+$/.test(alias)){ showError('自定义别名只能包含字母或数字'); return; }
+    if(alias.length < 4 || alias.length > 30){ showError('自定义别名需为 4–30 位字母、数字、连字符或下划线'); return; }
+    if(!/^[a-zA-Z0-9_-]+$/.test(alias)){ showError('自定义别名只能包含字母、数字、连字符或下划线'); return; }
   }
 
   setLoading(true);
@@ -354,7 +331,7 @@ $('shortForm').addEventListener('submit', function(e){
 
 // 别名输入实时过滤非法字符
 $('aliasInput').addEventListener('input', function(e){
-  var cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+  var cleaned = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
   if(cleaned !== e.target.value) e.target.value = cleaned;
 });
 
