@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://da.gd; font-src 'self'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://spoo.me https://da.gd; font-src 'self'; base-uri 'self'; form-action 'self'">
 <title>短链 · 简洁的链接缩短工具</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230071e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E">
 <style>
@@ -264,7 +264,7 @@ footer a:hover{color:var(--accent)}
         <div class="field">
           <label for="aliasInput">自定义别名（可选）</label>
           <div class="input-box">
-            <span class="prefix-addon">da.gd/</span>
+            <span class="prefix-addon">spoo.me/</span>
             <input type="text" id="aliasInput" placeholder="mylink" autocomplete="off" spellcheck="false" maxlength="30">
           </div>
           <div class="field-hint">4–30 位字母、数字、连字符或下划线，留空自动生成</div>
@@ -317,7 +317,7 @@ footer a:hover{color:var(--accent)}
   </main>
 
   <footer>
-    短链由 da.gd 提供生成与直接跳转，无中转页 · 历史记录仅保存在本机浏览器<br>
+    打开短链即刻直达原链接，无中转确认页 · 链接无过期 · 历史记录仅保存在本机浏览器<br>
     托管于 GitHub Pages，无需注册，打开即用
   </footer>
 </div>
@@ -347,7 +347,7 @@ footer a:hover{color:var(--accent)}
   </div>
 </div>
 
-<script src="qrcode.min.js?v=3" defer></script>
-<script src="app.js?v=3" defer></script>
+<script src="qrcode.min.js?v=4" defer></script>
+<script src="app.js?v=4" defer></script>
 </body>
 </html>

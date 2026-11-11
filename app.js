@@ -54,7 +54,45 @@ function fetchText(url, timeoutMs){
 }
 function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
-/* ================= 短链 API（da.gd 直接跳转，无中转页） ================= */
+/* ================= 短链 API（spoo.me 主服务：即时 302 直跳、无中转页） ================= */
+function fetchJsonPost(url, body, timeoutMs){
+  var controller = new AbortController();
+  var timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: body,
+    signal: controller.signal,
+    cache: 'no-store'
+  }).then(function(res){
+    return res.text().then(function(t){
+      var status = res.status, data = null;
+      try{ data = JSON.parse(t); }catch(e){}
+      return {status: status, data: data, raw: t};
+    });
+  }).finally(function(){ clearTimeout(timer); });
+}
+function shortenSpoo(url, alias){
+  var body = 'url=' + encodeURIComponent(url);
+  if(alias) body += '&alias=' + encodeURIComponent(alias);
+  return fetchJsonPost('https://spoo.me/', body, 12000).then(function(r){
+    var d = r.data || {};
+    if(r.status === 200 && d.short_url){
+      return {short: d.short_url.replace(/^http:\/\//, 'https://'), via: 'spoo.me'};
+    }
+    if(r.status === 429){
+      var er = new Error('RATE_LIMITED');
+      er.rateLimited = true;
+      throw er;
+    }
+    var msg = '短链服务返回错误，请稍后再试';
+    if(d.AliasError || d.alias) msg = '该别名已被占用，换一个试试';
+    else if(d.error) msg = d.error;
+    var err = new Error(msg);
+    err.business = true;
+    throw err;
+  });
+}
 function mapDagdError(s){
   if(/already taken/i.test(s)) return '该别名已被占用，换一个试试';
   if(/bad request/i.test(s)) return '请求无效，请检查链接或别名格式';
@@ -73,16 +111,16 @@ function shortenDagd(url, alias){
   });
 }
 function shorten(url, alias){
-  var attempts = 0;
-  function attempt(){
-    attempts++;
-    return shortenDagd(url, alias).catch(function(err){
-      if(err.business) throw err;               // 别名占用/格式等不重试
-      if(attempts < 3) return sleep(700).then(attempt);
-      throw err;
+  return shortenSpoo(url, alias).catch(function(err){
+    if(err.business) throw err;   // 别名占用等业务错误直接提示
+    // 限流或网络异常时退回 da.gd（同样直跳，但新链接首小时有官方反钓鱼确认页）
+    return shortenDagd(url, alias).then(function(r){
+      r.note = alias
+        ? '主服务繁忙，已用备用服务生成（若提示别名占用请稍后重试）'
+        : '主服务繁忙，已用备用服务生成';
+      return r;
     });
-  }
-  return attempt();
+  });
 }
 
 /* ================= 结果展示 ================= */
@@ -321,7 +359,7 @@ $('shortForm').addEventListener('submit', function(e){
         createdAt: Date.now()
       };
       addHistory(item);
-      renderResult(r.short, url, r.fallbackNote || '');
+      renderResult(r.short, url, r.note || '');
     })
     .catch(function(err){
       showError(err.message || '生成失败，请稍后再试');
